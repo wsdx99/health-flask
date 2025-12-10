@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>食事記録</h2>
+
+<form method="post" class="form-row">
+  <input name="meal" placeholder="食べ物" required>
+  <input name="calorie" type="number" placeholder="カロリー(kcal)" required>
+  <input name="date" type="date" value="{{ default_date }}" required>
+  <button type="submit">保存</button>
+</form>
+
+<table>
+  <tr>
+    <th>日時</th>
+    <th>食べ物</th>
+    <th>カロリー</th>
+  </tr>
+  {% for r in records %}
+  <tr>
+    <td>{{ r.date.strftime("%Y-%m-%d %H:%M") }}</td>
+    <td>{{ r.meal }}</td>
+    <td>{{ r.calorie }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

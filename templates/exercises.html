@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>運動記録</h2>
+
+<form method="post" class="form-row">
+  <input name="kind" placeholder="運動名(例: ウォーキング)" required>
+  <input name="minutes" type="number" placeholder="分（任意）">
+  <input name="steps" type="number" placeholder="歩数（任意）">
+  <input name="burned" type="number" placeholder="消費(kcal)（未入力なら自動計算）">
+  <input name="date" type="date" value="{{ default_date }}" required>
+  <button type="submit">保存</button>
+</form>
+
+<table>
+  <tr>
+    <th>日時</th>
+    <th>運動</th>
+    <th>分</th>
+    <th>歩数</th>
+    <th>消費(kcal)</th>
+  </tr>
+  {% for r in records %}
+  <tr>
+    <td>{{ r.date.strftime("%Y-%m-%d %H:%M") }}</td>
+    <td>{{ r.kind }}</td>
+    <td>{{ r.minutes }}</td>
+    <td>{{ r.steps }}</td>
+    <td>{{ r.burned }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

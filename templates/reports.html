@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>レポート</h2>
+
+<p>
+  摂取合計：<b>{{ total_in }}</b> kcal ／
+  消費合計：<b>{{ total_out }}</b> kcal ／
+  差分：<b>{{ net }}</b> kcal
+</p>
+
+<h3>今日の目標</h3>
+<p>目標 {{ daily_goal }} kcal ／ 今日の摂取 {{ today_in }} kcal</p>
+<div style="background:#eee;border-radius:8px;overflow:hidden;height:18px;max-width:480px;">
+  <div style="height:18px;background:#4caf50; width: {{ progress }}%;"></div>
+</div>
+<p style="font-size:12px;color:#666;">進捗：{{ progress }}%</p>
+
+<h3>直近7日 グラフ</h3>
+<canvas id="weekChart"></canvas>
+
+<h3 style="margin-top:18px;">直近7日（日別一覧）</h3>
+<table>
+  <tr><th>日付</th><th>摂取(kcal)</th><th>消費(kcal)</th><th>差分</th></tr>
+  {% for d, vals in daily_rows %}
+    <tr>
+      <td>{{ d }}</td>
+      <td>{{ vals['in'] }}</td>
+      <td>{{ vals['out'] }}</td>
+      <td>{{ vals['in'] - vals['out'] }}</td>
+    </tr>
+  {% endfor %}
+</table>
+
+<!-- Chart.js に渡すデータを JSON として安全に埋め込む -->
+<script id="chart-payload" type="application/json">
+{
+  "labels": {{ labels  | tojson }},
+  "inData": {{ in_data | tojson }},
+  "outData": {{ out_data| tojson }}
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const payloadText = document.getElementById('chart-payload').textContent;
+  let labelsArr = [], inDataArr = [], outDataArr = [];
+  try {
+    const payload = JSON.parse(payloadText);
+    labelsArr  = payload.labels  || [];
+    inDataArr  = payload.inData  || [];
+    outDataArr = payload.outData || [];
+  } catch (e) {
+    console.error('Chart payload parse error:', e);
+  }
+
+  const ctx = document.getElementById('weekChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labelsArr,
+      datasets: [
+        { label: '摂取(kcal)', data: inDataArr },
+        { label: '消費(kcal)', data: outDataArr }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+</script>
+{% endblock %}

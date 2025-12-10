@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>ホーム</h2>
+<ul>
+  <li><a href="{{ url_for('meals') }}">今日の食事を記録</a></li>
+  <li><a href="{{ url_for('exercises') }}">今日の運動を記録</a></li>
+  <li><a href="{{ url_for('reports') }}">統計を見る</a></li>
+</ul>
+{% endblock %}

@@ -1,0 +1,204 @@
+/* 全局设置 */
+* {
+    box-sizing: border-box;
+  }
+  
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background-color: #f5f5f7;
+    color: #1f2933;
+  }
+  
+  /* 头部 */
+  header {
+    background-color: #1f2933;
+    color: #ffffff;
+    padding: 12px 20px;
+  }
+  
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 20px;
+  }
+  
+  header nav a {
+    color: #e5e7eb;
+    text-decoration: none;
+    margin-right: 10px;
+    font-size: 14px;
+  }
+  
+  header nav a:hover {
+    text-decoration: underline;
+  }
+  
+  header hr {
+    border: none;
+    border-top: 1px solid #4b5563;
+    margin-top: 10px;
+  }
+  
+  /* 主体区域 */
+  main {
+    max-width: 960px;
+    margin: 20px auto;
+    padding: 0 16px 40px;
+  }
+  
+  /* 页脚 */
+  footer {
+    max-width: 960px;
+    margin: 0 auto 16px;
+    padding: 0 16px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  
+  /* flash 消息 */
+  .flash-area {
+    max-width: 960px;
+    margin: 10px auto 0;
+    padding: 0 16px;
+  }
+  
+  .flash-message {
+    background-color: #e0f2fe;
+    border-left: 4px solid #0284c7;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 14px;
+  }
+  
+  /* 标题 */
+  h2 {
+    margin-top: 0;
+    margin-bottom: 14px;
+    font-size: 20px;
+  }
+  
+  /* 表单（横向排列） */
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 12px 12px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  }
+  
+  .form-row input[type="text"],
+  .form-row input[type="number"],
+  .form-row input[type="date"] {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    min-width: 140px;
+  }
+  
+  .form-row input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  
+  /* 按钮 */
+  button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff;
+    white-space: nowrap;
+  }
+  
+  button:hover {
+    opacity: 0.9;
+  }
+  
+  button:active {
+    transform: translateY(1px);
+  }
+  
+  /* 表格 */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+    font-size: 14px;
+  }
+  
+  th, td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+  }
+  
+  th {
+    background-color: #f3f4f6;
+    font-weight: 600;
+  }
+  
+  tr:nth-child(even) td {
+    background-color: #f9fafb;
+  }
+  
+  /* レポート中の进度条外层如果想统一风格也可用这个类 */
+  .progress-bar {
+    background:#e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 18px;
+    max-width: 480px;
+  }
+  
+  .progress-inner {
+    height: 18px;
+    background:#4caf50;
+  }
+  
+  /* 图表 canvas */
+  canvas#weekChart {
+    margin-top: 10px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  }
+  
+  /* 链接 */
+  a {
+    color: #2563eb;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  /* 手机适配 */
+  @media (max-width: 640px) {
+    .form-row {
+      flex-direction: column;
+    }
+  
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row input[type="date"],
+    .form-row button {
+      width: 100%;
+    }
+  
+    header h1 {
+      font-size: 18px;
+    }
+  }
+  

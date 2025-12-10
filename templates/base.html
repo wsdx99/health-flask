@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title or "健康管理システム" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+  <header>
+    <h1>健康管理システム</h1>
+    <nav>
+      <a href="{{ url_for('index') }}">ホーム</a> |
+      <a href="{{ url_for('meals') }}">食事記録</a> |
+      <a href="{{ url_for('exercises') }}">運動記録</a> |
+      <a href="{{ url_for('reports') }}">レポート</a>
+    </nav>
+    <hr>
+  </header>
+
+  <!-- flash メッセージ表示 -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash-area">
+        {% for m in messages %}
+          <div class="flash-message">{{ m }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <hr>© 2025 HealthApp
+  </footer>
+</body>
+
+</html>
