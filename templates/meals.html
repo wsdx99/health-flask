@@ -1,26 +1,83 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>食事記録</h2>
 
-<form method="post" class="form-row">
-  <input name="meal" placeholder="食べ物" required>
-  <input name="calorie" type="number" placeholder="カロリー(kcal)" required>
-  <input name="date" type="date" value="{{ default_date }}" required>
-  <button type="submit">保存</button>
-</form>
+<h2 class="page-title">食事記録</h2>
 
-<table>
-  <tr>
-    <th>日時</th>
-    <th>食べ物</th>
-    <th>カロリー</th>
-  </tr>
-  {% for r in records %}
-  <tr>
-    <td>{{ r.date.strftime("%Y-%m-%d %H:%M") }}</td>
-    <td>{{ r.meal }}</td>
-    <td>{{ r.calorie }}</td>
-  </tr>
-  {% endfor %}
-</table>
+<!-- 食事の登録 -->
+<div class="card">
+  <div class="card-header">食事の登録</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('meals') }}" class="form-row">
+      <input name="meal" placeholder="食べ物" required>
+      <input name="calorie" type="number" placeholder="カロリー(kcal)" required>
+      <input name="date" type="date" value="{{ default_date }}" required>
+      <button type="submit">保存</button>
+    </form>
+    <p class="form-help">例）「サラダ」「カレーライス」など、1品ごとに登録できます。</p>
+  </div>
+</div>
+
+<!-- 写真から推定 -->
+<div class="card" style="margin-bottom:12px;">
+  <div class="card-header">写真から食べ物を推定</div>
+  <div class="card-body">
+    <input type="file" id="foodPhoto" accept="image/*" capture="environment">
+    <button type="button" id="analyzeBtn">解析</button>
+    <p id="analyzeResult" style="margin-top:8px;"></p>
+  </div>
+</div>
+
+<!-- 食事履歴 -->
+<div class="card">
+  <div class="card-header">食事履歴</div>
+  <div class="card-body">
+    {% if records %}
+    <table>
+      <tr>
+        <th>日時</th>
+        <th>食べ物</th>
+        <th>カロリー</th>
+      </tr>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.date.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ r.meal }}</td>
+        <td>{{ r.calorie }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+      <p class="empty-text">まだ食事記録がありません。</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+  const f = document.getElementById("foodPhoto").files[0];
+  if (!f) { alert("写真を選んでください"); return; }
+
+  const fd = new FormData();
+  fd.append("image", f);
+
+  try {
+    const res = await fetch("/api/food/analyze", { method: "POST", body: fd });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      alert(data.error || "解析失敗");
+      return;
+    }
+
+    // 结果显示 + 自动填入 meal 输入框
+    document.getElementById("analyzeResult").textContent = "推定: " + data.name;
+    const mealInput = document.querySelector('input[name="meal"]');
+    if (mealInput) mealInput.value = data.name;
+
+  } catch (e) {
+    alert("通信エラー");
+  }
+});
+</script>
+
 {% endblock %}

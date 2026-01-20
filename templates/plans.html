@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="page-title">運動計画</h2>
+
+<div class="card">
+  <div class="card-header">1日の運動計画を登録</div>
+  <div class="card-body">
+    <form method="post" class="form-row">
+      <input name="kind" placeholder="運動名（例：ウォーキング）" required>
+      <input name="date" type="date" value="{{ default_date }}" required>
+      <input name="time" type="time" value="{{ default_time }}" required>
+      <input name="minutes" type="number" placeholder="予定時間(分)">
+      <input name="kcal" type="number" placeholder="目標消費(kcal)">
+      <input name="note" type="text" placeholder="メモ（任意）">
+      <button type="submit">計画を保存</button>
+    </form>
+    <p class="form-help">
+      日付と時間を指定して、1日の運動計画（内容・時間・目標カロリー）を登録します。
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">登録済みの運動計画</div>
+  <div class="card-body">
+    {% if plans %}
+    <table>
+      <tr>
+        <th>日時</th>
+        <th>運動</th>
+        <th>予定時間(分)</th>
+        <th>目標消費(kcal)</th>
+        <th>メモ</th>
+      </tr>
+      {% for p in plans %}
+      <tr>
+        <td>{{ p.plan_datetime.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ p.kind }}</td>
+        <td>{{ p.target_minutes }}</td>
+        <td>{{ p.target_calorie }}</td>
+        <td>{{ p.note or "" }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+      <p class="empty-text">まだ運動計画が登録されていません。</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -6,37 +6,61 @@
   <title>{{ title or "健康管理システム" }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#111827">
+
 </head>
 
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+  }
+</script>
+
 <body>
-  <header>
-    <h1>健康管理システム</h1>
-    <nav>
-      <a href="{{ url_for('index') }}">ホーム</a> |
-      <a href="{{ url_for('meals') }}">食事記録</a> |
-      <a href="{{ url_for('exercises') }}">運動記録</a> |
-      <a href="{{ url_for('reports') }}">レポート</a>
-    </nav>
-    <hr>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">健康管理システム</div>
+      <nav class="main-nav">
+        <a href="{{ url_for('index') }}" class="nav-link{% if request.endpoint == 'index' %} is-active{% endif %}">
+          ホーム
+        </a>
+        <a href="{{ url_for('meals') }}" class="nav-link{% if request.endpoint == 'meals' %} is-active{% endif %}">
+          食事記録
+        </a>
+        <a href="{{ url_for('exercises') }}"
+          class="nav-link{% if request.endpoint == 'exercises' %} is-active{% endif %}">
+          運動記録
+        </a>
+        <a href="{{ url_for('plans') }}" class="nav-link{% if request.endpoint == 'plans' %} is-active{% endif %}">
+          運動計画
+        </a>
+        <a href="{{ url_for('reports') }}" class="nav-link{% if request.endpoint == 'reports' %} is-active{% endif %}">
+          レポート
+        </a>
+      </nav>
+    </div>
   </header>
 
   <!-- flash メッセージ表示 -->
   {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="flash-area">
-        {% for m in messages %}
-          <div class="flash-message">{{ m }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
+  {% if messages %}
+  <div class="flash-area">
+    {% for m in messages %}
+    <div class="flash-message">{{ m }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endwith %}
 
-  <main>
+  <main class="page-main">
     {% block content %}{% endblock %}
   </main>
 
-  <footer>
-    <hr>© 2025 HealthApp
+  <footer class="site-footer">
+    <div class="footer-inner">
+      © 2025 HealthApp
+    </div>
   </footer>
 </body>
 

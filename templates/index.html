@@ -1,9 +1,65 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>ホーム</h2>
-<ul>
-  <li><a href="{{ url_for('meals') }}">今日の食事を記録</a></li>
-  <li><a href="{{ url_for('exercises') }}">今日の運動を記録</a></li>
-  <li><a href="{{ url_for('reports') }}">統計を見る</a></li>
-</ul>
+<h2 class="page-title">ホーム</h2>
+
+<p class="page-intro">
+  日々の「食事」と「運動」を記録し、カロリー収支や直近の傾向を確認できる健康管理システムです。
+</p>
+
+<div class="card-grid">
+  <a href="{{ url_for('meals') }}" class="card card-link">
+    <div class="card-header">食事記録</div>
+    <div class="card-body">
+      <p>今日食べたものとカロリーを入力し、摂取カロリーの履歴を管理します。</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('exercises') }}" class="card card-link">
+    <div class="card-header">運動記録</div>
+    <div class="card-body">
+      <p>運動内容・時間・歩数を登録し、消費カロリーを記録します。</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('reports') }}" class="card card-link">
+    <div class="card-header">レポート</div>
+    <div class="card-body">
+      <p>直近7日間のカロリー収支や達成度をグラフで確認できます。</p>
+    </div>
+  </a>
+</div>
+
+<button id="enablePush">通知を有効化</button>
+
+<script>
+async function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(ch => ch.charCodeAt(0)));
+}
+
+document.getElementById("enablePush").addEventListener("click", async () => {
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") { alert("通知が許可されませんでした"); return; }
+
+  const reg = await navigator.serviceWorker.ready;
+  const res = await fetch("/api/push/public-key");
+  const { key } = await res.json();
+
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: await urlBase64ToUint8Array(key)
+  });
+
+  await fetch("/api/push/subscribe", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(sub)
+  });
+
+  alert("通知を有効化しました！");
+});
+</script>
+
 {% endblock %}

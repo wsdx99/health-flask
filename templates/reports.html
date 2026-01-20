@@ -1,35 +1,59 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>レポート</h2>
+<h2 class="page-title">レポート</h2>
 
-<p>
-  摂取合計：<b>{{ total_in }}</b> kcal ／
-  消費合計：<b>{{ total_out }}</b> kcal ／
-  差分：<b>{{ net }}</b> kcal
-</p>
-
-<h3>今日の目標</h3>
-<p>目標 {{ daily_goal }} kcal ／ 今日の摂取 {{ today_in }} kcal</p>
-<div style="background:#eee;border-radius:8px;overflow:hidden;height:18px;max-width:480px;">
-  <div style="height:18px;background:#4caf50; width: {{ progress }}%;"></div>
+<div class="card">
+  <div class="card-header">累計カロリー</div>
+  <div class="card-body">
+    <p>
+      摂取合計：<b>{{ total_in }}</b> kcal ／
+      消費合計：<b>{{ total_out }}</b> kcal ／
+      差分：<b>{{ net }}</b> kcal
+    </p>
+    <p class="form-help">差分がプラスの場合は摂取過多、マイナスの場合は消費が上回っています。</p>
+  </div>
 </div>
-<p style="font-size:12px;color:#666;">進捗：{{ progress }}%</p>
 
-<h3>直近7日 グラフ</h3>
-<canvas id="weekChart"></canvas>
+<div class="card">
+  <div class="card-header">今日の目標</div>
+  <div class="card-body">
+    <p>目標 {{ daily_goal }} kcal ／ 今日の摂取 {{ today_in }} kcal</p>
+    <div class="progress-bar">
+      <div class="progress-inner" style="width: {{ progress }}%;"></div>
+    </div>
+    <p class="progress-label">進捗：{{ progress }}%</p>
+  </div>
+</div>
 
-<h3 style="margin-top:18px;">直近7日（日別一覧）</h3>
-<table>
-  <tr><th>日付</th><th>摂取(kcal)</th><th>消費(kcal)</th><th>差分</th></tr>
-  {% for d, vals in daily_rows %}
-    <tr>
-      <td>{{ d }}</td>
-      <td>{{ vals['in'] }}</td>
-      <td>{{ vals['out'] }}</td>
-      <td>{{ vals['in'] - vals['out'] }}</td>
-    </tr>
-  {% endfor %}
-</table>
+<div class="card">
+  <div class="card-header">直近7日 グラフ</div>
+  <div class="card-body">
+    <div class="chart-wrapper">
+      <canvas id="weekChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">直近7日（日別一覧）</div>
+  <div class="card-body">
+    {% if daily_rows %}
+    <table>
+      <tr><th>日付</th><th>摂取(kcal)</th><th>消費(kcal)</th><th>差分</th></tr>
+      {% for d, vals in daily_rows %}
+        <tr>
+          <td>{{ d }}</td>
+          <td>{{ vals['in'] }}</td>
+          <td>{{ vals['out'] }}</td>
+          <td>{{ vals['in'] - vals['out'] }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+      <p class="empty-text">直近7日間のデータが不足しています。</p>
+    {% endif %}
+  </div>
+</div>
 
 <!-- Chart.js に渡すデータを JSON として安全に埋め込む -->
 <script id="chart-payload" type="application/json">
