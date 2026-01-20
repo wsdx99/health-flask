@@ -1,4 +1,4 @@
-const CACHE_NAME = "healthapp-v1";
+const CACHE_NAME = "healthapp-v2";
 const ASSETS = [
   "/",
   "/home",
@@ -10,36 +10,46 @@ const ASSETS = [
   "/static/manifest.json"
 ];
 
+// 安装时：立刻进入 waiting -> active
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  self.skipWaiting(); // ★ 关键
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
 });
 
+// 激活时：立刻接管所有页面
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim()); // ★ 关键
+});
+
+// fetch
 self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(event.request).then((res) => res || fetch(event.request))
   );
 });
 
+// push
 self.addEventListener("push", (event) => {
-    let data = {};
-    try {
-      data = event.data ? event.data.json() : {};
-    } catch (e) {}
-  
-    const title = data.title || "健康管理";
-    const options = {
-      body: data.body || "通知です",
-      icon: "/static/icons/icon-192.png",
-      badge: "/static/icons/icon-192.png",
-      data: { url: data.url || "/home" },
-    };
-  
-    event.waitUntil(self.registration.showNotification(title, options));
-  });
-  
-  self.addEventListener("notificationclick", (event) => {
-    event.notification.close();
-    const url = (event.notification.data && event.notification.data.url) || "/home";
-    event.waitUntil(clients.openWindow(url));
-  });
-  
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {}
+
+  const title = data.title || "健康管理";
+  const options = {
+    body: data.body || "通知です",
+    icon: "/static/icons/icon-192.png",
+    badge: "/static/icons/icon-192.png",
+    data: { url: data.url || "/home" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/home";
+  event.waitUntil(clients.openWindow(url));
+});
