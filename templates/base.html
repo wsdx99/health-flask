@@ -56,6 +56,10 @@
   <main class="page-main">
     {% block content %}{% endblock %}
   </main>
+  <button id="enablePushBtn">通知を有効化</button>
+  <p id="pushStatus"></p>
+  <script src="{{ url_for('static', filename='push.js') }}"></script>
+
 
   <footer class="site-footer">
     <div class="footer-inner">

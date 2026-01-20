@@ -22,12 +22,24 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
     let data = {};
-    try { data = event.data.json(); } catch (e) {}
+    try {
+      data = event.data ? event.data.json() : {};
+    } catch (e) {}
+  
     const title = data.title || "健康管理";
     const options = {
-      body: data.body || "今日の記録を忘れずに！",
-      icon: "/static/icons/icon-192.png"
+      body: data.body || "通知です",
+      icon: "/static/icons/icon-192.png",
+      badge: "/static/icons/icon-192.png",
+      data: { url: data.url || "/home" },
     };
+  
     event.waitUntil(self.registration.showNotification(title, options));
+  });
+  
+  self.addEventListener("notificationclick", (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || "/home";
+    event.waitUntil(clients.openWindow(url));
   });
   
