@@ -244,7 +244,11 @@ def push_subscribe():
         )
         db.session.commit()
 
+    print("subscribe called:", (endpoint or "")[-30:])
+    print("keys:", bool(keys.get("p256dh")), bool(keys.get("auth")))
+
     return jsonify({"ok": True})
+
 
 @app.route("/api/push/test", methods=["POST"])
 def push_test():
