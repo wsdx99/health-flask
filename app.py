@@ -5,6 +5,8 @@ from datetime import datetime, date
 import os
 import json
 from pywebpush import webpush, WebPushException
+from flask import send_from_directory
+
 
 # ---------------- app init ----------------
 app = Flask(__name__)
@@ -108,6 +110,10 @@ def send_push_to_all(payload_dict: dict) -> tuple[int, int]:
     return sent, failed
 
 # ---------------- routes ----------------
+@app.route("/sw.js")
+def sw():
+    return send_from_directory("static", "sw.js", mimetype="application/javascript")
+
 @app.route("/")
 def cover():
     return render_template("cover.html", title="ウェルカム")
@@ -267,6 +273,10 @@ def push_daily_reminder():
         "url": "/home"
     })
     return jsonify({"ok": True, "sent": sent, "failed": failed})
+@app.route("/api/push/debug/subscribers")
+def push_debug_subscribers():
+    return jsonify({"count": PushSubscription.query.count()})
+
 
 # ---------------- main ----------------
 if __name__ == "__main__":

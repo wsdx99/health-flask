@@ -13,9 +13,10 @@
 
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+    navigator.serviceWorker.register("/sw.js", { scope: "/" });
   }
 </script>
+
 
 <body>
   <header class="site-header">
