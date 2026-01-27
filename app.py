@@ -1,4 +1,3 @@
-# ---------------- imports ----------------
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
@@ -67,15 +66,15 @@ MET_VALUES = {
 
 def guess_activity_key(kind: str) -> str:
     text = (kind or "").lower()
-    if "歩" in kind or "ウォーク" in kind or "walk" in text:
+    if ("歩" in kind) or ("ウォーク" in kind) or ("walk" in text):
         return "walk"
-    if "ジョギ" in kind or "jog" in text:
+    if ("ジョギ" in kind) or ("jog" in text):
         return "jog"
-    if "ラン" in kind or "run" in text:
+    if ("ラン" in kind) or ("run" in text):
         return "run"
-    if "自転車" in kind or "バイク" in kind or "bike" in text:
+    if ("自転車" in kind) or ("バイク" in kind) or ("bike" in text):
         return "bike"
-    if "筋" in kind or "ジム" in kind:
+    if ("筋" in kind) or ("ジム" in kind):
         return "gym"
     return "walk"
 
@@ -87,10 +86,11 @@ def calc_exercise_calories(activity_key: str, minutes: int, steps: int = 0) -> i
     return int(kcal_met + kcal_steps)
 
 # ---------------- push helper ----------------
-def send_push_to_all(payload_dict: dict) -> tuple[int, int]:
-    """return (sent, failed)"""
+def send_push_to_all(payload_dict: dict) -> tuple[int, int, list[str]]:
+    """return (sent, failed, errors_sample)"""
     subs = PushSubscription.query.all()
     sent, failed = 0, 0
+    errors = []
     payload = json.dumps(payload_dict, ensure_ascii=False)
 
     for s in subs:
@@ -107,49 +107,13 @@ def send_push_to_all(payload_dict: dict) -> tuple[int, int]:
             sent += 1
         except WebPushException as e:
             failed += 1
+            msg = str(e)
+            errors.append(msg)
             print("WebPush failed:", repr(e))
 
-    return sent, failed
+    return sent, failed, errors[:3]
 
 # ---------------- routes: PWA assets ----------------
-@app.route("/api/push/test", methods=["POST"])
-def push_test():
-    # 1) 先检查 VAPID 是否存在
-    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY_PEM:
-        return jsonify({
-            "ok": False,
-            "error": "VAPID keys not set",
-            "has_public": bool(VAPID_PUBLIC_KEY),
-            "has_private": bool(VAPID_PRIVATE_KEY_PEM),
-        }), 500
-
-    subs = PushSubscription.query.all()
-    ok, ng = 0, 0
-    errors = []
-
-    for s in subs:
-        try:
-            webpush(
-                subscription_info={
-                    "endpoint": s.endpoint,
-                    "keys": {"p256dh": s.p256dh, "auth": s.auth},
-                },
-                data=json.dumps({
-                    "title": "健康管理",
-                    "body": "テスト通知です ✅",
-                    "url": "/home",
-                }),
-                vapid_private_key=VAPID_PRIVATE_KEY_PEM,
-                vapid_claims=VAPID_CLAIMS,
-            )
-            ok += 1
-        except Exception as e:
-            ng += 1
-            errors.append(str(e))
-            print("WebPush failed:", repr(e))
-
-    return jsonify({"ok": True, "sent": ok, "failed": ng, "errors": errors[:3]})
-
 @app.route("/sw.js")
 def sw():
     return send_from_directory("static", "sw.js", mimetype="application/javascript")
@@ -192,12 +156,7 @@ def meals():
         return redirect(url_for("meals"))
 
     records = MealRecord.query.order_by(MealRecord.date.desc()).all()
-    return render_template(
-        "meals.html",
-        title="食事記録",
-        records=records,
-        default_date=date.today().isoformat()
-    )
+    return render_template("meals.html", title="食事記録", records=records, default_date=date.today().isoformat())
 
 @app.route("/exercises", methods=["GET", "POST"])
 def exercises():
@@ -214,14 +173,9 @@ def exercises():
 
         try:
             minutes = int(minutes_str) if minutes_str else 0
-        except ValueError:
-            flash("分は数値で入力してください。")
-            return redirect(url_for("exercises"))
-
-        try:
             steps = int(steps_str) if steps_str else 0
         except ValueError:
-            flash("歩数は数値で入力してください。")
+            flash("分・歩数は数値で入力してください。")
             return redirect(url_for("exercises"))
 
         try:
@@ -245,12 +199,7 @@ def exercises():
         return redirect(url_for("exercises"))
 
     records = ExerciseRecord.query.order_by(ExerciseRecord.date.desc()).all()
-    return render_template(
-        "exercises.html",
-        title="運動記録",
-        records=records,
-        default_date=date.today().isoformat()
-    )
+    return render_template("exercises.html", title="運動記録", records=records, default_date=date.today().isoformat())
 
 @app.route("/plans", methods=["GET", "POST"])
 def plans():
@@ -291,22 +240,14 @@ def plans():
         return redirect(url_for("plans"))
 
     items = ExercisePlan.query.order_by(ExercisePlan.plan_datetime.asc()).all()
-    return render_template(
-        "plans.html",
-        title="運動計画",
-        plans=items,
-        default_date=date.today().isoformat(),
-        default_time="18:00",
-    )
+    return render_template("plans.html", title="運動計画", plans=items, default_date=date.today().isoformat(), default_time="18:00")
 
 @app.route("/reports")
 def reports():
-    # 全期間合計
     total_in = db.session.query(func.coalesce(func.sum(MealRecord.calorie), 0)).scalar() or 0
     total_out = db.session.query(func.coalesce(func.sum(ExerciseRecord.burned), 0)).scalar() or 0
     net = total_in - total_out
 
-    # 直近7日
     today = date.today()
     start_day = today - timedelta(days=6)
     start_dt = datetime.combine(start_day, time.min)
@@ -363,7 +304,6 @@ def api_food_analyze():
     f = request.files.get("image")
     if not f:
         return jsonify({"ok": False, "error": "no image"}), 400
-    # TODO: ここで外部APIに繋ぐ（今は仮）
     return jsonify({"ok": True, "name": "サラダ"})
 
 # ---------------- routes: push APIs ----------------
@@ -392,14 +332,19 @@ def push_subscribe():
 @app.route("/api/push/test", methods=["POST"])
 def push_test():
     if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY_PEM:
-        return jsonify({"ok": False, "error": "VAPID keys not set"}), 500
+        return jsonify({
+            "ok": False,
+            "error": "VAPID keys not set",
+            "has_public": bool(VAPID_PUBLIC_KEY),
+            "has_private": bool(VAPID_PRIVATE_KEY_PEM),
+        }), 500
 
-    sent, failed = send_push_to_all({
+    sent, failed, errors = send_push_to_all({
         "title": "テスト通知",
         "body": "Web Push が動作しました ✅",
-        "url": "/home"
+        "url": "/home",
     })
-    return jsonify({"ok": True, "sent": sent, "failed": failed})
+    return jsonify({"ok": True, "sent": sent, "failed": failed, "errors": errors})
 
 @app.route("/api/push/daily-reminder", methods=["POST"])
 def push_daily_reminder():
@@ -410,12 +355,12 @@ def push_daily_reminder():
     if auth != CRON_SECRET:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
-    sent, failed = send_push_to_all({
+    sent, failed, errors = send_push_to_all({
         "title": "健康管理リマインド",
         "body": "今日の食事・運動を記録しましたか？",
-        "url": "/home"
+        "url": "/home",
     })
-    return jsonify({"ok": True, "sent": sent, "failed": failed})
+    return jsonify({"ok": True, "sent": sent, "failed": failed, "errors": errors})
 
 @app.route("/api/push/debug/subscribers")
 def push_debug_subscribers():
