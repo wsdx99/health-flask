@@ -24,6 +24,7 @@
     <input type="file" id="foodPhoto" accept="image/*" capture="environment">
     <button type="button" id="analyzeBtn">解析</button>
     <p id="analyzeResult" style="margin-top:8px;"></p>
+    <p class="form-help">※「約kcal」は推定値です。量・油・トッピングで変動します。</p>
   </div>
 </div>
 
@@ -69,10 +70,14 @@ document.getElementById("analyzeBtn").addEventListener("click", async () => {
       return;
     }
 
-    // 结果显示 + 自动填入 meal 输入框
-    document.getElementById("analyzeResult").textContent = "推定: " + data.name;
+    document.getElementById("analyzeResult").textContent =
+      `推定: ${data.name} / 約 ${data.kcal} kcal`;
+
     const mealInput = document.querySelector('input[name="meal"]');
     if (mealInput) mealInput.value = data.name;
+
+    const calInput = document.querySelector('input[name="calorie"]');
+    if (calInput) calInput.value = data.kcal;
 
   } catch (e) {
     alert("通信エラー");

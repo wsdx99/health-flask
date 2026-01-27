@@ -68,6 +68,7 @@
 <script>
   const payloadText = document.getElementById('chart-payload').textContent;
   let labelsArr = [], inDataArr = [], outDataArr = [];
+
   try {
     const payload = JSON.parse(payloadText);
     labelsArr  = payload.labels  || [];
@@ -77,20 +78,45 @@
     console.error('Chart payload parse error:', e);
   }
 
-  const ctx = document.getElementById('weekChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labelsArr,
-      datasets: [
-        { label: '摂取(kcal)', data: inDataArr },
-        { label: '消費(kcal)', data: outDataArr }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+  const canvas = document.getElementById('weekChart');
+  if (!canvas) {
+    console.error('weekChart canvas not found');
+  } else {
+    const ctx = canvas.getContext('2d');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labelsArr,
+        datasets: [
+          // 摂取ライン
+          {
+            label: '摂取(kcal)',
+            data: inDataArr,
+            tension: 0.25,
+            fill: false,
+            pointRadius: 3
+          },
+          // 消費ライン（＝運動）
+          {
+            label: '消費(kcal)',
+            data: outDataArr,
+            tension: 0.25,
+            fill: false,
+            pointRadius: 3
+          }
+
+          // もし「運動だけ」表示したいなら上の摂取を消して、ここだけ残せばOK
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  }
 </script>
 {% endblock %}

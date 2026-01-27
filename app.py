@@ -4,7 +4,10 @@ from sqlalchemy import func
 from datetime import datetime, date, time, timedelta
 import os
 import json
+import base64
 from pywebpush import webpush, WebPushException
+
+from openai import OpenAI
 
 # ---------------- app init ----------------
 app = Flask(__name__)
@@ -14,6 +17,11 @@ app.secret_key = os.getenv("SECRET_KEY", "dev")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///health.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
+
+# ---------------- OpenAI config ----------------
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL_VISION = os.getenv("OPENAI_MODEL_VISION", "gpt-4.1-mini")  # 你也可以用环境变量覆盖
+openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 # ---------------- PWA / Push config ----------------
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
@@ -85,6 +93,59 @@ def calc_exercise_calories(activity_key: str, minutes: int, steps: int = 0) -> i
     kcal_steps = steps * 0.04
     return int(kcal_met + kcal_steps)
 
+def _guess_mime(filename: str, content_type: str | None) -> str:
+    if content_type and content_type.startswith("image/"):
+        return content_type
+    ext = (os.path.splitext(filename)[1] or "").lower()
+    if ext in [".jpg", ".jpeg"]:
+        return "image/jpeg"
+    if ext == ".png":
+        return "image/png"
+    if ext == ".webp":
+        return "image/webp"
+    return "image/jpeg"
+
+def _sanitize_food_name(text: str) -> str:
+    s = (text or "").strip()
+    s = s.splitlines()[0].strip()
+    for prefix in ["推定:", "推定：", "結果:", "結果：", "-", "・", "*"]:
+        if s.startswith(prefix):
+            s = s[len(prefix):].strip()
+    return s[:60] if s else ""
+
+def _extract_json(text: str) -> dict:
+    """
+    モデルが ```json ... ``` で返したり、前後に少し文字が混ざった時も救済する。
+    最低限: 最初の { から最後の } までを抜く。
+    """
+    t = (text or "").strip()
+    if not t:
+        raise ValueError("empty model output")
+
+    # まず普通にパース
+    try:
+        return json.loads(t)
+    except Exception:
+        pass
+
+    # ```json ``` を剥がす
+    cleaned = t
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```json", "").replace("```JSON", "").replace("```", "").strip()
+        try:
+            return json.loads(cleaned)
+        except Exception:
+            pass
+
+    # 最初の{ と最後の} の間を抜く
+    i = t.find("{")
+    j = t.rfind("}")
+    if i != -1 and j != -1 and j > i:
+        core = t[i:j+1]
+        return json.loads(core)
+
+    raise ValueError("json parse failed")
+
 # ---------------- push helper ----------------
 def send_push_to_all(payload_dict: dict) -> tuple[int, int, list[str]]:
     """return (sent, failed, errors_sample)"""
@@ -107,8 +168,7 @@ def send_push_to_all(payload_dict: dict) -> tuple[int, int, list[str]]:
             sent += 1
         except WebPushException as e:
             failed += 1
-            msg = str(e)
-            errors.append(msg)
+            errors.append(str(e))
             print("WebPush failed:", repr(e))
 
     return sent, failed, errors[:3]
@@ -250,24 +310,32 @@ def reports():
 
     today = date.today()
     start_day = today - timedelta(days=6)
+
     start_dt = datetime.combine(start_day, time.min)
     end_dt = datetime.combine(today + timedelta(days=1), time.min)
 
     meal_rows = (
-        db.session.query(func.date(MealRecord.date).label("d"), func.coalesce(func.sum(MealRecord.calorie), 0))
+        db.session.query(
+            func.date(MealRecord.date).label("d"),
+            func.coalesce(func.sum(MealRecord.calorie), 0).label("sum_kcal")
+        )
         .filter(MealRecord.date >= start_dt, MealRecord.date < end_dt)
         .group_by("d")
         .all()
     )
+
     ex_rows = (
-        db.session.query(func.date(ExerciseRecord.date).label("d"), func.coalesce(func.sum(ExerciseRecord.burned), 0))
+        db.session.query(
+            func.date(ExerciseRecord.date).label("d"),
+            func.coalesce(func.sum(ExerciseRecord.burned), 0).label("sum_kcal")
+        )
         .filter(ExerciseRecord.date >= start_dt, ExerciseRecord.date < end_dt)
         .group_by("d")
         .all()
     )
 
-    meal_by_date = {row[0]: row[1] for row in meal_rows}
-    ex_by_date = {row[0]: row[1] for row in ex_rows}
+    meal_by_date = {row[0]: int(row[1] or 0) for row in meal_rows}
+    ex_by_date = {row[0]: int(row[1] or 0) for row in ex_rows}
 
     labels, in_data, out_data, daily_rows = [], [], [], []
     for i in range(7):
@@ -280,7 +348,8 @@ def reports():
         out_data.append(v_out)
         daily_rows.append((d_str, {"in": v_in, "out": v_out}))
 
-    today_in = meal_by_date.get(today.strftime("%Y-%m-%d"), 0)
+    today_key = today.strftime("%Y-%m-%d")
+    today_in = meal_by_date.get(today_key, 0)
     progress = int(min(today_in / DAILY_GOAL * 100, 200)) if DAILY_GOAL > 0 else 0
 
     return render_template(
@@ -301,10 +370,68 @@ def reports():
 # ---------------- routes: food analyze API ----------------
 @app.route("/api/food/analyze", methods=["POST"])
 def api_food_analyze():
+    if not openai_client:
+        return jsonify({"ok": False, "error": "OPENAI_API_KEY not set"}), 500
+
     f = request.files.get("image")
     if not f:
         return jsonify({"ok": False, "error": "no image"}), 400
-    return jsonify({"ok": True, "name": "サラダ"})
+
+    raw = f.read()
+    if not raw:
+        return jsonify({"ok": False, "error": "empty image"}), 400
+    if len(raw) > 5 * 1024 * 1024:
+        return jsonify({"ok": False, "error": "image too large (max 5MB)"}), 413
+
+    mime = _guess_mime(f.filename or "", getattr(f, "mimetype", None))
+    b64 = base64.b64encode(raw).decode("utf-8")
+    data_url = f"data:{mime};base64,{b64}"
+
+    prompt = (
+        "画像に写っている食べ物を推定し、1人前の概算カロリー(kcal)も推定してください。\n"
+        "必ず次のJSONだけを返してください（説明文は禁止）。\n"
+        '{"name":"料理名","kcal":123}\n'
+        "ルール:\n"
+        "- name: 日本語の食べ物/料理名を1つ\n"
+        "- kcal: その料理の一般的な1人前の概算kcal（整数）\n"
+        "- 不明な場合は {\"name\":\"不明\",\"kcal\":0}\n"
+    )
+
+    try:
+        resp = openai_client.responses.create(
+            model=OPENAI_MODEL_VISION,
+            input=[{
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
+                    {"type": "input_image", "image_url": data_url},
+                ],
+            }],
+        )
+
+        text = (getattr(resp, "output_text", "") or "").strip()
+        obj = _extract_json(text)
+
+        name = _sanitize_food_name(str(obj.get("name", "")))
+        kcal = obj.get("kcal", 0)
+
+        try:
+            kcal_int = int(kcal)
+        except Exception:
+            kcal_int = 0
+
+        if not name:
+            name = "不明"
+        if kcal_int < 0:
+            kcal_int = 0
+        if kcal_int > 3000:
+            kcal_int = 3000
+
+        return jsonify({"ok": True, "name": name, "kcal": kcal_int})
+
+    except Exception as e:
+        print("OpenAI analyze error:", repr(e))
+        return jsonify({"ok": False, "error": "ai_analyze_failed"}), 502
 
 # ---------------- routes: push APIs ----------------
 @app.route("/api/push/public-key")
